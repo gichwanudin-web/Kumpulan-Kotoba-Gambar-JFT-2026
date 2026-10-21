@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本語クイズ (31問 - 漢字とひらがな)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', 'Hiragino Sans', 'Meiryo', sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px 0;
+        }
+
+        .quiz-container {
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 600px;
+            padding: 25px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #2c3e50;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .progress {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+        .image-container {
+            width: 100%;
+            height: 280px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            overflow: hidden;
+            border: 1px solid #eee;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .option-btn {
+            background-color: #ecf0f1;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            padding: 12px 15px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #2c3e50;
+            font-family: inherit;
+            text-align: left;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            background-color: #d5dbdb;
+            border-color: #95a5a6;
+        }
+
+        .option-btn.correct {
+            background-color: #2ecc71;
+            border-color: #27ae60;
+            color: white;
+        }
+
+        .option-btn.wrong {
+            background-color: #e74c3c;
+            border-color: #c0392b;
+            color: white;
+        }
+
+        .option-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.85;
+        }
+
+        .feedback {
+            margin-top: 15px;
+            font-weight: bold;
+            font-size: 18px;
+            height: 25px;
+        }
+
+        .feedback.correct { color: #27ae60; }
+        .feedback.wrong { color: #c0392b; }
+
+        .score-container { display: none; }
+        .score-container h2 { color: #2c3e50; }
+        .score-text { font-size: 20px; margin: 20px 0; }
+        
+        .restart-btn {
+            background-color: #e67e22;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-family: inherit;
+        }
+        .restart-btn:hover { background-color: #d35400; }
+    </style>
+</head>
+<body>
+
+    <div class="quiz-container">
+        <h1 id="quiz-title">日本語クイズ</h1>
+        
+        <div id="question-area">
+            <div class="progress" id="progress-text"></div>
+            <div class="image-container" id="image-container"></div>
+            <div class="options" id="options-container"></div>
+            <div class="feedback" id="feedback-text"></div>
+        </div>
+
+        <div class="score-container" id="score-container">
+            <h2>クイズ終了！</h2>
+            <div class="score-text">あなたのスコア: <strong><span id="final-score"></span> / <span id="total-score-display"></span></strong></div>
+            <p id="score-message"></p>
+            <button class="restart-btn" onclick="restartQuiz()">もう一度挑戦する</button>
+        </div>
+    </div>
+
+    <script>
+        // Data kuis berdasarkan daftar kosakata yang Anda berikan
+        // Semua jawaban sudah menggunakan Kanji (Hiragana)
+        // PERBAIKAN: Menambahkan koma yang hilang dan menutup kurung kurawal yang belum tertutup.
+        
+       const originalQuizData = [
+    // 1. 拾います (Memungut) -> Gambar anak memungut sampah
+    { image: "gambar 1.png", options: ["拾います (ひろいます)", "捨てます (すてます)", "拭きます (ふきます)", "曲がります (まがります)"], correct: "拾います (ひろいます)" },
+    // 2. 卵 (Telur) -> Gambar telur
+    { image: "gambar 2.png", options: ["卵 (たまご)", "野菜 (やさい)", "魚 (さかな)", "肉 (にく)"], correct: "卵 (たまご)" },
+    // 3. 学生 (Siswa) -> Gambar anak belajar
+    { image: "gambar 3.png", options: ["学生 (がくせい)", "先生 (せんせい)", "医者 (いしゃ)", "介護職 (かいごしょく)"], correct: "学生 (がくせい)" },
+    // 4. 案内します (Memandu) -> Gambar pemandu wisata
+    { image: "gambar 4.png", options: ["案内します (あんないします)", "走ります (はしります)", "歩きます (あるきます)", "助けます (たすけます)"], correct: "案内します (あんないします)" },
+    // 5. 父 (Ayah) -> Gambar silsilah keluarga (ayah)
+    { image: "gambar 5.png", options: ["父 (ちち)", "母 (はは)", "兄 (あに)", "弟 (おとうと)"], correct: "父 (ちち)" },
+    // 6. 紙 (Kertas) -> Gambar tumpukan kertas
+    { image: "gambar 6.png", options: ["紙 (かみ)", "本 (ほん)", "ノート", "鉛筆 (えんぴつ)"], correct: "紙 (かみ)" },
+    // 7. 被ります (Memakai topi) -> Gambar anak pakai topi
+    { image: "gambar 7.png", options: ["被ります (かぶります)", "着ます (きます)", "履きます (はきます)", "掛けます (かけます)"], correct: "被ります (かぶります)" },
+    // 8. バス (Bus) -> Gambar bus
+    { image: "gambar 8.png", options: ["バス", "電車 (でんしゃ)", "車 (くるま)", "飛行機 (ひこうき)"], correct: "バス" },
+    // 9. 酸っぱい (Asam) -> Gambar makan lemon
+    { image: "gambar 9.png", options: ["酸っぱい (すっぱい)", "甘い (あまい)", "辛い (からい)", "苦い (にがい)"], correct: "酸っぱい (すっぱい)" },
+    // 10. 子供 (Anak) -> Gambar anak laki-laki
+    { image: "gambar 10.png", options: ["子供 (こども)", "大人 (おとな)", "おじいさん", "おばあさん"], correct: "子供 (こども)" },
+    // 11. 曲がります (Berbelok) -> Gambar panah berbelok
+    { image: "gambar 11.png", options: ["曲がります (まがります)", "進みます (すすみます)", "止まります (とまります)", "走ります (はしります)"], correct: "曲がります (まがります)" },
+    // 12. 鍵 (Kunci) -> Gambar kunci
+    { image: "gambar 12.png", options: ["鍵 (かぎ)", "時計 (とけい)", "鉛筆 (えんぴつ)", "紙 (かみ)"], correct: "鍵 (かぎ)" },
+    // 13. トイレ (Toilet) -> Gambar toilet
+    { image: "gambar 13.png", options: ["トイレ", "お風呂 (おふろ)", "台所 (だいどころ)", "玄関 (げんかん)"], correct: "トイレ" },
+    // 14. 拭きます (Mengelap) -> Gambar membersihkan meja
+    { image: "gambar 14.png", options: ["拭きます (ふきます)", "洗います (あらいます)", "掃きます (はきます)", "磨きます (みがきます)"], correct: "拭きます (ふきます)" },
+    // 15. 丸い (Bulat) -> Gambar ban
+    { image: "gambar 15.png", options: ["丸い (まるい)", "四角い (しかくい)", "長い (ながい)", "短い (みじかい)"], correct: "丸い (まるい)" },
+    // 16. 貼ります (Menempel) -> Gambar memasang wallpaper
+    { image: "gambar 16.png", options: ["貼ります (はります)", "塗ります (ぬります)", "切ります (きります)", "描きます (かきます)"], correct: "貼ります (はります)" },
+    // 17. 帽子 (Topi) -> Gambar topi bunga
+    { image: "gambar 17.png", options: ["帽子 (ぼうし)", "リボン", "ボタン", "羽 (はね)"], correct: "帽子 (ぼうし)" },
+    // 18. 掃除機 (Vacuum cleaner) -> Gambar vacuum
+    { image: "gambar 18.png", options: ["掃除機 (そうじき)", "扇風機 (せんぷうき)", "冷蔵庫 (れいぞうこ)", "テレビ"], correct: "掃除機 (そうじき)" },
+    // 19. 歩きます (Berjalan) -> Gambar orang berjalan
+    { image: "gambar 19.png", options: ["歩きます (あるきます)", "走ります (はしります)", "座ります (すわります)", "飛びます (とびます)"], correct: "歩きます (あるきます)" },
+    // 20. 生まれます (Lahir) -> Gambar keluarga dengan bayi
+    { image: "gambar 20.png", options: ["生まれます (うまれます)", "死にます (しにます)", "育ちます (そだちます)", "笑います (わらいます)"], correct: "生まれます (うまれます)" },
+    // 21. 汚れます (Kotor) -> Gambar kaos kotor
+    { image: "gambar 21.png", options: ["汚れます (よごれます)", "綺麗になります (きれいになります)", "新しくなります (あたらしくなります)", "古くなります (ふるくなります)"], correct: "汚れます (よごれます)" },
+    // 22. ハンカチ (Saputangan) -> Gambar saputangan
+    { image: "gambar 22.png", options: ["ハンカチ", "タオル", "シャツ", "ズボン"], correct: "ハンカチ" },
+    // 23. 助けます (Menolong) -> Gambar penyelamatan di sungai
+    { image: "gambar 23.png", options: ["助けます (たすけます)", "溺れます (おぼれます)", "泳ぎます (およぎます)", "起きます (おきます)"], correct: "助けます (たすけます)" },
+    // 24. 公園 (Taman) -> Gambar taman
+    { image: "gambar 24.png", options: ["公園 (こうえん)", "学校 (がっこう)", "病院 (びょういん)", "駅 (えき)"], correct: "公園 (こうえん)" },
+    // 25. 広い (Luas) -> Gambar ruang tamu
+    { image: "gambar 25.png", options: ["広い (ひろい)", "狭い (せまい)", "高い (たかい)", "低い (ひくい)"], correct: "広い (ひろい)" },
+    // 26. 晴れ (Cerah) -> Gambar taman (langit cerah)
+    { image: "gambar 26.png", options: ["晴れ (はれ)", "雨 (あめ)", "曇り (くもり)", "雪 (ゆき)"], correct: "晴れ (はれ)" },
+    // 27. 妻 (Istri) -> Gambar silsilah keluarga (ibu)
+    { image: "gambar 27.png", options: ["妻 (つま)", "夫 (おっと)", "姉 (あね)", "妹 (いもうと)"], correct: "妻 (つま)" },
+    // 28. 飛行機 (Pesawat) -> Pesawat
+    { image: "gambar 28.png", options: ["飛行機 (ひこうき)", "船 (ふね)", "車 (くるま)", "自転車 (じてんしゃ)"], correct: "飛行機 (ひこうき)" },
+    // 29. 結婚 (Pernikahan) -> Gambar saputangan
+    { image: "gambar 29.png", options: ["結婚 (けっこん)", "卒業 (そつぎょう)", "合格 (ごうかく)", "会議 (かいぎ)"], correct: "結婚 (けっこん)" },
+    // 30. コンビニ (Minimarket) -> Gambar Minimarket
+    { image: "gambar 30.png", options: ["コンビニ", "図書館 (としょかん)", "銀行 (ぎんこう)", "郵便局 (ゆうびんきょく)"], correct: "コンビニ" },
+    // 31. 止めます (Mematikan) -> 
+    { image: "gambar 31.png", options: ["止めます (とめます)", "開けます (あけます)", "洗います (あらいます)", "聞きます (ききます)"], correct: "止めます (とめます)" },
+    // 32. 両親 (りょうしん) -> 
+    { image: "gambar 32.png", options: ["両親 (りょうしん)", "近所 (きんじょ)", "友達 (ともだち)", "利用者 (りようしゃ)"], correct: "両親 (りょうしん)" },
+    // 33. 家族 (かぞく) -> 
+    { image: "gambar 33.png", options: ["家族 (かぞく)", "近所 (きんじょ)", "友達 (ともだち)", "利用者 (りようしゃ)"], correct: "家族 (かぞく)" },
+    // 34. 調べます (Meneliti/Memeriksa) -> 
+    { image: "gambar 34.png", options: ["調べます (しらべます)", "知ります (しります)", "忘れます (わすれます)", "覚えます (おぼえます)"], correct: "調べます (しらべます)" }
+];
+
+        let quizData = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let answered = false;
+        let autoNextTimer = null;
+
+        const imageContainer = document.getElementById('image-container');
+        const optionsContainer = document.getElementById('options-container');
+        const feedbackEl = document.getElementById('feedback-text');
+        const questionArea = document.getElementById('question-area');
+        const scoreContainer = document.getElementById('score-container');
+        const finalScoreEl = document.getElementById('final-score');
+        const totalScoreDisplay = document.getElementById('total-score-display');
+        const quizTitle = document.getElementById('quiz-title');
+        const progressText = document.getElementById('progress-text');
+        const scoreMessage = document.getElementById('score-message');
+
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        function prepareQuiz() {
+            const shuffledQuestions = shuffleArray(originalQuizData);
+            quizData = shuffledQuestions.map(q => {
+                return {
+                    image: q.image,
+                    options: shuffleArray(q.options),
+                    correct: q.correct 
+                };
+            });
+        }
+
+        function loadQuestion() {
+            answered = false;
+            clearTimeout(autoNextTimer);
+            
+            feedbackEl.textContent = "";
+            feedbackEl.className = "feedback";
+            optionsContainer.innerHTML = "";
+
+            const currentQuizData = quizData[currentQuestionIndex];
+            
+            imageContainer.innerHTML = `<img src="${currentQuizData.image}" alt="問題の画像" onerror="this.src='https://via.placeholder.com/400x280?text=Gambar+tidak+ditemukan'">`;
+            
+            progressText.textContent = `第 ${currentQuestionIndex + 1} 問 / ${quizData.length} 問`;
+
+            currentQuizData.options.forEach((option) => {
+                const button = document.createElement('button');
+                button.innerText = option;
+                button.classList.add('option-btn');
+                button.onclick = () => selectOption(option, button);
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function selectOption(selectedOption, selectedButton) {
+            if (answered) return;
+            
+            const currentQuizData = quizData[currentQuestionIndex];
+            const allButtons = optionsContainer.querySelectorAll('.option-btn');
+            
+            allButtons.forEach(btn => btn.disabled = true);
+            
+            if (selectedOption === currentQuizData.correct) {
+                selectedButton.classList.add('correct');
+                feedbackEl.textContent = "正解！";
+                feedbackEl.classList.add('correct');
+                score++;
+            } else {
+                selectedButton.classList.add('wrong');
+                allButtons.forEach(btn => {
+                    if (btn.innerText === currentQuizData.correct) {
+                        btn.classList.add('correct');
+                    }
+                });
+                feedbackEl.textContent = "残念！";
+                feedbackEl.classList.add('wrong');
+            }
+
+            answered = true;
+
+            autoNextTimer = setTimeout(() => {
+                currentQuestionIndex++;
+                if (currentQuestionIndex < quizData.length) {
+                    loadQuestion();
+                } else {
+                    showScore();
+                }
+            }, 1500); 
+        }
+
+        function showScore() {
+            questionArea.style.display = "none";
+            scoreContainer.style.display = "block";
+            quizTitle.textContent = "結果発表";
+            finalScoreEl.textContent = score;
+            totalScoreDisplay.textContent = quizData.length;
+            
+            const percentage = (score / quizData.length) * 100;
+            if (percentage === 100) {
+                scoreMessage.textContent = "完璧です！素晴らしい！";
+            } else if (percentage >= 80) {
+                scoreMessage.textContent = "よくできました！";
+            } else if (percentage >= 60) {
+                scoreMessage.textContent = "合格です！もう少し頑張りましょう。";
+            } else {
+                scoreMessage.textContent = "もう一度復習しましょう。";
+            }
+        }
+
+        function restartQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            questionArea.style.display = "block";
+            scoreContainer.style.display = "none";
+            quizTitle.textContent = "日本語クイズ";
+            
+            prepareQuiz();
+            loadQuestion();
+        }
+
+        prepareQuiz();
+        loadQuestion();
+    </script>
+</body>
+</html>
